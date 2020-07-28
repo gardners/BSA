@@ -20,6 +20,21 @@ If your compiler is named "gcc" for example, compile with:
 
 gcc -o bsa bsa.c
 
+or you can just use 'make bsa'
+
+Native MEGA65 Version
+=====================
+
+There is experimental support for compiling this assembler using CC65
+for running natively on the MEGA65.  
+
+It is likely that there are some things that have been missed in the 
+process, in particular where the original code assumed that int is a
+32-bit type.
+
+Also there is no support for real values (CC65 lacks floating point support),
+and the number of labels is limited to 500, instead of 8000.
+
 Running
 =======
 If you have a source code named "hello.asm", run the assembler with:
@@ -576,12 +591,12 @@ const char *Mne;       // Current mnemonic
 int oc;      // op code
 int am;      // address mode
 int il;      // instruction length
-int pc = -1; // program counter
-int bss;     // bss counter
+long pc = -1; // program counter
+unsigned int bss;     // bss counter
 int Phase;
 int IfLevel;
 int Skipping;
-int SkipLine[10];
+unsigned int SkipLine[10];
 int ForcedEnd;    // Triggered by .END command
 int IgnoreCase;   // 1: Ignore case for symbols
 
@@ -595,17 +610,17 @@ char *Src;
 char  Lst[256];
 char  Pre[256];
 
-int GenStart = 0x10000 ; // Lowest assemble address
-int GenEnd   =       0 ; //Highest assemble address
+long GenStart = 0x10000 ; // Lowest assemble address
+long GenEnd   =       0 ; //Highest assemble address
 
 // These arrays hold the parameter for storage files
 
 #define SFMAX 20
-int SFA[SFMAX];
-int SFL[SFMAX];
+unsigned int SFA[SFMAX];
+unsigned int SFL[SFMAX];
 char SFF[SFMAX][80];
 
-int StoreCount = 0;
+unsigned int StoreCount = 0;
 
 
 // The size is one page more than 64K because program, counter
@@ -636,7 +651,7 @@ int IncludeLevel;
 
 #define ML 256
 
-int ArgPtr[10];
+unsigned int ArgPtr[10];
 char Line[ML];               // source line
 char Label[ML];
 char MacArgs[ML];
@@ -752,10 +767,10 @@ void ListSymbols(FILE *lf, int n, int lb, int ub);
 // ErrorMsg
 // ********
 
+char buf[1024];
 void ErrorMsg(const char *format, ...)
 {
    va_list args;
-   char buf[1024];
    memset(buf,0,sizeof(buf));
    snprintf(buf, sizeof(buf)-1, "\n*** Error in file %s line %d:\n",
          IncludeStack[IncludeLevel].Src, LiNo);
@@ -1175,10 +1190,10 @@ void SymRefs(int i)
 }
 
 
+char Sym[ML];
 char *EvalSymValue(char *p, int *v)
 {
    int i;
-   char Sym[ML];
 
    p = GetSymbol(p,Sym);
    for (i=0 ; i < Labels ; ++i)
@@ -1199,7 +1214,10 @@ char *EvalSymValue(char *p, int *v)
 char *EvalSymBytes(char *p, int *v)
 {
    int i;
-   char Sym[ML];
+#ifdef __CC65__
+// PGS: Shared with the above function.  Is this safe?
+//   char Sym[ML];
+#endif
 
    p = GetSymbol(p,Sym);
    for (i=0 ; i < Labels ; ++i)
@@ -1217,11 +1235,11 @@ char *EvalSymBytes(char *p, int *v)
 }
 
 
-char *ParseLongData(char *p, int l)
+char *ParseLongData(char *p, long l)
 {
-   unsigned int v;
-   int i;
-   int w;
+   long v;
+   long i;
+   long w;
 
    p = SkipSpace(p);
    if (*p == '$')
@@ -1256,6 +1274,10 @@ char *ParseLongData(char *p, int l)
 
 char *ParseRealData(char *p)
 {
+#ifdef __CC65__
+   fprintf(stderr,"ERROR: Floating point values not supported on CC65 builds.\n");
+   exit(-3);
+#else
    unsigned int v;
    int i,mansize;
    int Sign,Exponent;
@@ -1355,6 +1377,7 @@ char *ParseRealData(char *p)
    }
    pc += mansize+1;
    return p;
+#endif
 }
 
 
@@ -1548,13 +1571,13 @@ struct binop_struct binop[BINOPS] =
 // EvalOperand
 // ***********
 
-char *EvalOperand(char *p, int *v, int prio)
+char *EvalOperand(char *p, unsigned int *v, unsigned int prio)
 {
-   int  i;    // loop index
-   int  l;    // length of string
-   int  o;    // priority of operator
-   int  w;    // value of right operand
-   char c;    // current character
+   unsigned int  i;    // loop index
+   unsigned int  l;    // length of string
+   unsigned int  o;    // priority of operator
+   unsigned int  w;    // value of right operand
+   unsigned char c;    // current character
 
    *v = UNDEF; // preset result to UNDEF
 
@@ -1620,7 +1643,7 @@ char *EvalOperand(char *p, int *v, int prio)
 
 char *ParseWordData(char *p)
 {
-   int v,lo,hi;
+   unsigned int v,lo,hi;
 
    p = EvalOperand(p,&v,0);
    if (Phase == 2)
@@ -1639,7 +1662,7 @@ char *ParseWordData(char *p)
 
 char *ParseFillData(char *p)
 {
-   int i,m,v;
+   unsigned int i,m,v;
 
    p = EvalOperand(p,&m,0);
    if (m < 0 || m > 32767)
