@@ -183,7 +183,15 @@ For more examples see the complete operating system for C64 and VC20
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#ifndef __CC65__
 #include <math.h>
+#define set_ROM(a,v) ROM[a]=v
+#define read_ROM(a) ROM[a]
+#else
+#include "memory.h"
+#define set_ROM(a,v) lpoke(ROM+a,v)
+#define read_ROM(a) lpeek(ROM+a)
+#endif
 #include <ctype.h>
 
 // ****************************
@@ -472,7 +480,8 @@ unsigned int GetIndex(char *mne)
 
 int Strcasecmp(const char *s1, const char *s2)
 {
-   for (size_t i=0 ; i <= strlen(s1) && i <= strlen(s2) ; ++i)
+   size_t i;
+   for (i=0 ; i <= strlen(s1) && i <= strlen(s2) ; ++i)
    {
       if (tolower(s1[i]) > tolower(s2[i])) return  1;
       if (tolower(s1[i]) < tolower(s2[i])) return -1;
@@ -486,7 +495,8 @@ int Strcasecmp(const char *s1, const char *s2)
 
 int Strncasecmp(const char *s1, const char *s2, size_t n)
 {
-   for (size_t i=0 ; i <= strlen(s1) && i <= strlen(s2) && i < n; ++i)
+   size_t i;
+   for (i=0 ; i <= strlen(s1) && i <= strlen(s2) && i < n; ++i)
    {
       if (tolower(s1[i]) > tolower(s2[i])) return  1;
       if (tolower(s1[i]) < tolower(s2[i])) return -1;
@@ -500,12 +510,13 @@ int Strncasecmp(const char *s1, const char *s2, size_t n)
 
 char *Strcasestr(const char *haystack, const char *needle)
 {
+   size_t i;
    size_t hlen = strlen(haystack);
    size_t nlen = strlen(needle);
 
    if (!nlen) return (char *)haystack;
    if (hlen < nlen) return NULL;
-   for (size_t i=0 ; i <= hlen-nlen ; ++i)
+   for (i=0 ; i <= hlen-nlen ; ++i)
    {
       if (!Strncasecmp(haystack+i,needle,nlen)) return (char *)(haystack+i);
    }
@@ -601,7 +612,12 @@ int StoreCount = 0;
 // overflows are detected after using the new value.
 // So references to pc + n do no harm if pc is near the boundary
 
+#ifndef __CC65__
 unsigned char ROM[0x10100]; // binary 64K plus 1 page
+#else
+// For native MEGA65 use, we put the 64K+1 page in BANK 4
+#define ROM 0x40000L
+#endif
 
 
 FILE *sf;
@@ -633,7 +649,11 @@ char ModuleName[ML];
 #define LBSS 21
 #define LPOS 22
 
+#ifndef __CC65__
 #define MAXLAB 8000
+#else
+#define MAXLAB 500
+#endif
 
 struct LabelStruct
 {
@@ -1224,7 +1244,7 @@ char *ParseLongData(char *p, int l)
    }
    if (Phase == 2)
    {
-      for (i=0 ; i < l ; ++i) ROM[pc+i] = Operand[i];
+      for (i=0 ; i < l ; ++i) set_ROM(pc+1,Operand[i]);
       PrintPC();
       fprintf(lf," %2.2x %2.2x %2.2x %s\n",
          Operand[0],Operand[1],Operand[2],Line);
@@ -1320,7 +1340,7 @@ char *ParseRealData(char *p)
 
    if (Phase == 2)
    {
-      for (i=0 ; i < mansize+1 ; ++i) ROM[pc+i] = Operand[i];
+      for (i=0 ; i < mansize+1 ; ++i) set_ROM(pc+i,Operand[i]);
       PrintPC();
       fprintf(lf," %2.2x %2.2x %2.2x",Operand[0],Operand[1],Operand[2]);
       if (mansize == 3 && strncmp(Line,"   ",3)==0)
@@ -1607,8 +1627,8 @@ char *ParseWordData(char *p)
    {
       lo = v & 0xff;
       hi = v >> 8;
-      ROM[pc  ] = lo;
-      ROM[pc+1] = hi;
+      set_ROM(pc,lo);
+      set_ROM(pc+1,hi);
       PrintPC();
       fprintf(lf," %2.2x %2.2x    %s\n",lo,hi,Line);
    }
@@ -1637,7 +1657,7 @@ char *ParseFillData(char *p)
    v &= 0xff;
    if (Phase == 2)
    {
-      for (i=0 ; i < m ; ++i) ROM[pc+i] = v;
+      for (i=0 ; i < m ; ++i) set_ROM(pc+i,v);
       PrintPC();
       if (m > 0) fprintf(lf," %2.2x",v);
       else       fprintf(lf,"   ");
@@ -1818,7 +1838,7 @@ char *ParseBitData(char *p)
    if (Phase == 2)
    {
       PrintPC();
-      ROM[pc] = v;
+      set_ROM(pc,v);
       fprintf(lf," %2.2x       ",v);
       fprintf(lf,"%s\n",Line);
    }
@@ -1845,7 +1865,7 @@ char *ParseLitData(char *p)
    if (Phase == 2)
    {
       PrintPC();
-      ROM[pc] = v;
+      set_ROM(pc,v);
       fprintf(lf," %2.2x       ",v);
       fprintf(lf,"%s\n",Line);
    }
@@ -1967,7 +1987,7 @@ char *ParseByteData(char *p, int Charset)
       PrintPC();
       for (i=0 ; i < l ; ++i)
       {
-         ROM[pc+i] = ByteBuffer[i];
+         set_ROM(pc+i,ByteBuffer[i]);
          if (i < 3) fprintf(lf," %2.2x",ByteBuffer[i]);
       }
       for (i=l ; i < 3 ; ++i) fprintf(lf,"   ");
@@ -2502,9 +2522,9 @@ char *GenerateCode(char *p)
 
       // insert binary code
 
-      ROM[pc] = oc;
-      if (il > 1) ROM[pc+1] = lo;
-      if (il > 2) ROM[pc+2] = hi;
+      set_ROM(pc,oc);
+      if (il > 1) set_ROM(pc+1,lo);
+      if (il > 2) set_ROM[pc+2,hi);
 
       PrintPC();
       PrintOC();
@@ -3058,7 +3078,7 @@ void WriteBinaries(void)
          fwrite(&lo,1,1,bf);
          fwrite(&hi,1,1,bf);
       }
-      fwrite(ROM+SFA[i],1,SFL[i],bf);
+      fwrite(read_ROM(SFA[i]),1,SFL[i],bf);
       fclose(bf);
    }
 }
@@ -3075,6 +3095,9 @@ const char *Stat(int o)
 int main(int argc, char *argv[])
 {
    int ic,v;
+
+#ifdef __CC65__
+#endif
 
    for (ic=1 ; ic < argc ; ++ic)
    {
