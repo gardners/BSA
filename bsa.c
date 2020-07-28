@@ -564,7 +564,7 @@ void *ReallocOrDie(void *ptr, size_t size)
 
 
 
-#define UNDEF 0xff0000
+#define UNDEF 0xff0000L
 
 int SkipHex;        // Switch on with -x
 int Debug;          // Switch on with -d
@@ -583,7 +583,7 @@ int ModuleTrigger;  // Start of module
 int WordOC;         // List 2 byte opcodes as word
 
 int ERRMAX = 10;    // Stop assemby after ERRMAX errors
-int LoadAddress = UNDEF;
+long LoadAddress = UNDEF;
 char *MacroPointer;
 
 const char *Mne;       // Current mnemonic
@@ -592,7 +592,7 @@ int oc;      // op code
 int am;      // address mode
 int il;      // instruction length
 long pc = -1; // program counter
-unsigned int bss;     // bss counter
+long bss;     // bss counter
 int Phase;
 int IfLevel;
 int Skipping;
@@ -935,7 +935,7 @@ char *NeedChar(char *p, char c)
    return strchr(p,c);
 }
 
-char *EvalOperand(char *, int *, int);
+char *EvalOperand(char *, long *, int);
 
 char *ParseCaseData(char *p)
 {
@@ -954,7 +954,7 @@ char *ParseCaseData(char *p)
 
 char *SetPC(char *p)
 {
-   int v;
+   long v;
    if (*p == '*')
    {
       p = NeedChar(p,'=');
@@ -977,6 +977,7 @@ char *SetPC(char *p)
 
 char *SetBSS(char *p)
 {
+   char *v;
    p = NeedChar(p,'=');
    if (!p)
    {
@@ -984,14 +985,14 @@ char *SetBSS(char *p)
       ErrorMsg("Missing '=' in set BSS & instruction\n");
       exit(1);
    }
-   p = EvalOperand(p+1,&bss,0);
+   v = EvalOperand(p+1,&bss,0);
    if (df) fprintf(df,"BSS = %4.4x\n",bss);
    if (Phase == 2)
    {
       PrintLiNo(1);
       fprintf(lf,"%4.4x          %s\n",bss,Line);
    }
-   return p;
+   return v;
 }
 
 int StrCmp(const char *s1, const char *s2)
@@ -1044,9 +1045,10 @@ int MacroIndex(char *p)
 
 
 
-char *DefineLabel(char *p, int *val, int Locked)
+char *DefineLabel(char *p, long *val, int Locked)
 {
-   int j,l,v;
+   int j;
+   long l,v;
 
    if (Labels > MAXLAB -2)
    {
@@ -1191,7 +1193,7 @@ void SymRefs(int i)
 
 
 char Sym[ML];
-char *EvalSymValue(char *p, int *v)
+char *EvalSymValue(char *p, long *v)
 {
    int i;
 
@@ -1211,7 +1213,7 @@ char *EvalSymValue(char *p, int *v)
 }
 
 
-char *EvalSymBytes(char *p, int *v)
+char *EvalSymBytes(char *p, long *v)
 {
    int i;
 #ifdef __CC65__
@@ -1396,7 +1398,7 @@ char *EvalDecValue(char *p, int *v)
 }
 
 
-char *EvalCharValue(char *p, int *v)
+char *EvalCharValue(char *p, long *v)
 {
    // special code for Commodore syntax lda #'
 
@@ -1416,7 +1418,7 @@ char *EvalCharValue(char *p, int *v)
 }
 
 
-char *EvalHexValue(char *p, int *v)
+char *EvalHexValue(char *p, long *v)
 {
    unsigned int w;
    sscanf(p,"%x",&w);
@@ -1426,9 +1428,9 @@ char *EvalHexValue(char *p, int *v)
 }
 
 
-char *EvalBinValue(char *p, int *v)
+char *EvalBinValue(char *p, long *v)
 {
-   int r;
+   unsigned int r;
    r = 0;
    while(*p == ' ' || *p == '1' || *p == '0' || *p == '*' || *p == '.')
    {
@@ -1448,7 +1450,7 @@ char *SkipToComma(char *p)
 }
 
 
-char *op_par(char *p, int *v)
+char *op_par(char *p, long *v)
 {
    char c = (*p == '[') ? ']' : ')'; // closing char
    p = EvalOperand(p+1,v,0);
@@ -1464,35 +1466,35 @@ char *op_par(char *p, int *v)
 
 // functions parsing unary operators or constants
 
-char *op_plu(char *p, int *v) { p = EvalOperand(p+1,v,12)               ; return p; }
-char *op_min(char *p, int *v) { p = EvalOperand(p+1,v,12);*v = -(*v)    ; return p; }
-char *op_lno(char *p, int *v) { p = EvalOperand(p+1,v,12);*v = !(*v)    ; return p; }
-char *op_bno(char *p, int *v) { p = EvalOperand(p+1,v,12);*v = ~(*v)    ; return p; }
+char *op_plu(char *p, long *v) { p = EvalOperand(p+1,v,12)               ; return p; }
+char *op_min(char *p, long *v) { p = EvalOperand(p+1,v,12);*v = -(*v)    ; return p; }
+char *op_lno(char *p, long *v) { p = EvalOperand(p+1,v,12);*v = !(*v)    ; return p; }
+char *op_bno(char *p, long *v) { p = EvalOperand(p+1,v,12);*v = ~(*v)    ; return p; }
 
-char *op_low(char *p, int *v)
+char *op_low(char *p, long *v)
 {
    p = EvalOperand(p+1,v,12);
    if (*v != UNDEF) *v = *v & 0xff;
    return p;
 }
 
-char *op_hig(char *p, int *v)
+char *op_hig(char *p, long *v)
 {
    p = EvalOperand(p+1,v,12);
    if (*v != UNDEF) *v = *v >> 8;
    return p;
 }
 
-char *op_prc(char *p, int *v) { *v = pc; return p+1;}
-char *op_hex(char *p, int *v) { return EvalHexValue(p+1,v) ;}
-char *op_cha(char *p, int *v) { return EvalCharValue(p+1,v);}
-char *op_bin(char *p, int *v) { return EvalBinValue(p+1,v) ;}
-char *op_len(char *p, int *v) { return EvalSymBytes(p+1,v) ;}
+char *op_prc(char *p, long *v) { *v = pc; return p+1;}
+char *op_hex(char *p, long *v) { return EvalHexValue(p+1,v) ;}
+char *op_cha(char *p, long *v) { return EvalCharValue(p+1,v);}
+char *op_bin(char *p, long *v) { return EvalBinValue(p+1,v) ;}
+char *op_len(char *p, long *v) { return EvalSymBytes(p+1,v) ;}
 
 struct unaop_struct
 {
    char op;
-   char *(*foo)(char*,int*);
+   char *(*foo)(char*,long*);
 };
 
 #define UNAOPS 13
@@ -1571,12 +1573,12 @@ struct binop_struct binop[BINOPS] =
 // EvalOperand
 // ***********
 
-char *EvalOperand(char *p, unsigned int *v, unsigned int prio)
+char *EvalOperand(char *p, long *v, int prio)
 {
    unsigned int  i;    // loop index
    unsigned int  l;    // length of string
    unsigned int  o;    // priority of operator
-   unsigned int  w;    // value of right operand
+   long          w;    // value of right operand
    unsigned char c;    // current character
 
    *v = UNDEF; // preset result to UNDEF
@@ -2051,7 +2053,7 @@ char *IsData(char *p)
       ErrorLine(p);
       exit(1);
    }
-   if (pc > 0x10000 && pc != UNDEF)
+   if (pc > 0x10000L && pc != UNDEF)
    {
       ErrorMsg("Program counter overflow\n");
       ErrorLine(p);
