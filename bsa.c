@@ -651,7 +651,7 @@ int IncludeLevel;
 
 #define ML 256
 
-unsigned int ArgPtr[10];
+long ArgPtr[10];
 char Line[ML];               // source line
 char Label[ML];
 char MacArgs[ML];
@@ -1383,7 +1383,7 @@ char *ParseRealData(char *p)
 }
 
 
-char *EvalDecValue(char *p, int *v)
+char *EvalDecValue(char *p, long *v)
 {
    *v = atoi(p);
    while (isdigit(*p)) ++p;
@@ -1645,7 +1645,7 @@ char *EvalOperand(char *p, long *v, int prio)
 
 char *ParseWordData(char *p)
 {
-   unsigned int v,lo,hi;
+   long v,lo,hi;
 
    p = EvalOperand(p,&v,0);
    if (Phase == 2)
@@ -1664,7 +1664,7 @@ char *ParseWordData(char *p)
 
 char *ParseFillData(char *p)
 {
-   unsigned int i,m,v;
+   long i,m,v;
 
    p = EvalOperand(p,&m,0);
    if (m < 0 || m > 32767)
@@ -1714,9 +1714,9 @@ void ListSizeInfo()
 }
 
 
+char FileName[256];
 char *IncludeFile(char *p)
 {
-   char FileName[256];
    char *fp;
    p = NeedChar(p,'"');
    if (!p)
@@ -1770,7 +1770,7 @@ char *ParseCPUData(char *p)
 
 char *ParseStoreData(char *p)
 {
-   int Start,Length,i;
+   long Start,Length,i;
    char Filename[80];
 
    if (Phase < 2) return p;
@@ -1825,7 +1825,7 @@ char *ParseStoreData(char *p)
 
 char *ParseBSSData(char *p)
 {
-   int m;
+   long m;
 
    p = EvalOperand(p,&m,0);
    if (m < 1 || m > 32767)
@@ -1929,10 +1929,11 @@ char *ParseASCII(char *p, unsigned char b[], int *l)
    return p;
 }
 
+unsigned char ByteBuffer[ML];
 char *ParseByteData(char *p, int Charset)
 {
-   int i,j,l,v;
-   unsigned char ByteBuffer[ML];
+   int i,j,l;
+   long v;
    char Delimiter;
 
    l = 0;
@@ -2269,7 +2270,7 @@ void CPU_Error(void)
 // AdjustOpcode
 // ************
 
-void AdjustOpcode(int *v)
+void AdjustOpcode(long *v)
 {
    // JMP
 
@@ -2333,9 +2334,11 @@ void CheckSkip(void)
    for (i=1 ; i <= IfLevel ; ++i) Skipping |= SkipLine[i];
 }
 
+char msgBuffer[256];
 int CheckCondition(char *p)
 {
-   int r,v,Ifdef,Ifval;
+   int r;
+   long v,Ifdef,Ifval;
    r = 0;
    if (*p != '#') return 0; // No preprocessing
    p = SkipSpace(p+1);
@@ -2344,11 +2347,9 @@ int CheckCondition(char *p)
       CheckSkip();
       if (Skipping)
          return 0;          // Include line in listing
-      char *msg = MallocOrDie(strlen(p+6) + 2);
-      strcpy(msg, p+6);
-      strcat(msg, "\n");
-      ErrorMsg(msg);
-      free(msg);
+      strcpy(msgBuffer, p+6);
+      strcat(msgBuffer, "\n");
+      ErrorMsg(msgBuffer);
       exit(1);
    }
    Ifdef = !Strncasecmp(p,"ifdef ",6);
@@ -2419,7 +2420,7 @@ int CheckCondition(char *p)
 
 char *GenerateCode(char *p)
 {
-   int v,lo,hi;
+   long v,lo,hi;
    char *o;
 
    // initialize
@@ -2549,7 +2550,7 @@ char *GenerateCode(char *p)
 
       set_ROM(pc,oc);
       if (il > 1) set_ROM(pc+1,lo);
-      if (il > 2) set_ROM[pc+2,hi);
+      if (il > 2) set_ROM(pc+2,hi);
 
       PrintPC();
       PrintOC();
@@ -2583,10 +2584,10 @@ char *GenerateCode(char *p)
 
 // Called after '(' returns # of args
 
-int ScanArguments(char *p, char *args, int ptr[])
+char sym[ML];
+int ScanArguments(char *p, char *args, long ptr[])
 {
    int l,n;
-   char sym[ML];
 
    n = 0;
    ptr[0] = 0;
@@ -2614,13 +2615,13 @@ int ScanArguments(char *p, char *args, int ptr[])
 }
 
 
-void RecordMacro(char *p)
-{
    char Macro[ML];
-   int i,j,l,al,an,bl;
-   int ap[10];
    char args[ML];
    char Buf[ML];
+void RecordMacro(char *p)
+{
+   int i,j,l,al,an,bl;
+   long ap[10];
    char *b;
    char *at;
 
@@ -2731,7 +2732,10 @@ int ExpandMacro(char *m)
 {
    int j,an;
    char *p;
+#ifndef __CC65__
+   // For CC65 build, we share with another function
    char Macro[ML];
+#endif
 
    j = MacroIndex(m);
    if (j < 0) return j;
@@ -2799,7 +2803,7 @@ void NextMacLine(char *w)
 
 void ParseLine(char *cp)
 {
-   int i,v,m;
+   long i,v,m;
    // char *start = cp;  // Remember start of line
 
    am = -1;
@@ -3119,7 +3123,7 @@ const char *Stat(int o)
 
 int main(int argc, char *argv[])
 {
-   int ic,v;
+   long ic,v;
 
 #ifdef __CC65__
 #endif
