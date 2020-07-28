@@ -3107,7 +3107,7 @@ void WriteBinaries(void)
          fwrite(&lo,1,1,bf);
          fwrite(&hi,1,1,bf);
       }
-      fwrite(read_ROM(SFA[i]),1,SFL[i],bf);
+      fwrite(&read_ROM(SFA[i]),1,SFL[i],bf);
       fclose(bf);
    }
 }
