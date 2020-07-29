@@ -33,7 +33,7 @@ process, in particular where the original code assumed that int is a
 32-bit type.
 
 Also there is no support for real values (CC65 lacks floating point support),
-and the number of labels is limited to 500, instead of 8000.
+and the number of labels is limited to 200, instead of 8000.
 
 Running
 =======
@@ -667,13 +667,13 @@ char ModuleName[ML];
 #ifndef __CC65__
 #define MAXLAB 8000
 #else
-#define MAXLAB 500
+#define MAXLAB 100
 #endif
 
 struct LabelStruct
 {
    char *Name;     // Label name - case sensitive
-   int   Address;  // Range 0 - 65536
+   unsigned int   Address;  // Range 0 - 65536
    int   Bytes;    // Length of object (string for example)
    int   Paired;   // Used in indirect addressing mode
    int   Locked;   // Defined from command line argument
@@ -767,7 +767,7 @@ void ListSymbols(FILE *lf, int n, int lb, int ub);
 // ErrorMsg
 // ********
 
-char buf[1024];
+char buf[128];
 void ErrorMsg(const char *format, ...)
 {
    va_list args;
