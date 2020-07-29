@@ -607,8 +607,13 @@ int IgnoreCase;   // 1: Ignore case for symbols
 // Filenames
 
 char *Src;
+#ifdef __CC65__
+char  Lst[65];
+char  Pre[65];
+#else
 char  Lst[256];
 char  Pre[256];
+#endif
 
 long GenStart = 0x10000 ; // Lowest assemble address
 long GenEnd   =       0 ; //Highest assemble address
@@ -649,7 +654,11 @@ struct IncludeStackStruct
 
 int IncludeLevel;
 
+#ifdef __CC65__
+#define ML 128
+#else
 #define ML 256
+#endif
 
 long ArgPtr[10];
 char Line[ML];               // source line
@@ -2339,7 +2348,11 @@ void CheckSkip(void)
    for (i=1 ; i <= IfLevel ; ++i) Skipping |= SkipLine[i];
 }
 
+#ifdef __CC65__
+char msgBuffer[128];
+#else
 char msgBuffer[256];
+#endif
 int CheckCondition(char *p)
 {
    int r;
