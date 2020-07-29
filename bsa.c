@@ -645,12 +645,18 @@ FILE *lf;
 FILE *df;
 FILE *pf;
 
+#ifdef __CC65__
+#define MAX_INCLUDE_DEPTH 8
+#else
+#define MAX_INCLUDE_DEPTH 100
+#endif
+
 struct IncludeStackStruct
 {
    FILE *fp;
    int   LiNo;
    char *Src;
-} IncludeStack[100];
+} IncludeStack[MAX_INCLUDE_DEPTH];
 
 int IncludeLevel;
 
@@ -673,6 +679,8 @@ char ModuleName[ML];
 #define LBSS 21
 #define LPOS 22
 
+// PGS XXX - Labels and their associated data will need to move to
+// BANK 5 for CC65, which will require considerable rework
 #ifndef __CC65__
 #define MAXLAB 8000
 #else
@@ -1741,7 +1749,7 @@ char *IncludeFile(char *p)
    while (*p != 0 && *p != '"') *fp++ = *p++;
    *fp = 0;
    // printf("fopen %s\n",FileName);
-   if (IncludeLevel >= 99)
+   if (IncludeLevel >= (MAX_INCLUDE_DEPTH-1))
    {
       ErrorMsg("Too many includes nested ( >= 99)\n");
       exit(1);
