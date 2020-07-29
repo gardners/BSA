@@ -1,3 +1,5 @@
+all:	bsa bsa.prg
+
 bsa:	bsa.c Makefile
 	gcc -o bsa bsa.c
 

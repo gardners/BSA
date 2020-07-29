@@ -3092,7 +3092,7 @@ int CmpRefs( const void *arg1, const void *arg2 )
 void WriteBinaries(void)
 {
    int i;
-   unsigned char lo,hi;
+   unsigned char lo,hi,v;
    FILE *bf;
 
    for (i=0 ; i < StoreCount ; ++i)
@@ -3107,7 +3107,8 @@ void WriteBinaries(void)
          fwrite(&lo,1,1,bf);
          fwrite(&hi,1,1,bf);
       }
-      fwrite(&read_ROM(SFA[i]),1,SFL[i],bf);
+      v=read_ROM(SFA[i]);
+      fwrite(&v,1,SFL[i],bf);
       fclose(bf);
    }
 }
