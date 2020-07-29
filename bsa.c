@@ -1713,8 +1713,11 @@ void ListSizeInfo()
    }
 }
 
-
+#ifdef __CC65__
+char FileName[65];
+#else
 char FileName[256];
+#endif
 char *IncludeFile(char *p)
 {
    char *fp;
@@ -1771,7 +1774,9 @@ char *ParseCPUData(char *p)
 char *ParseStoreData(char *p)
 {
    long Start,Length,i;
+#ifndef __CC65__
    char Filename[80];
+#endif
 
    if (Phase < 2) return p;
    p = EvalOperand(p,&Start,0);
@@ -1806,12 +1811,12 @@ char *ParseStoreData(char *p)
    }
    ++p;
    i = 0;
-   while (*p && *p != '"' && i < 80) Filename[i++] = *p++;
-   Filename[i] = 0;
+   while (*p && *p != '"' && i < 80) FileName[i++] = *p++;
+   FileName[i] = 0;
    SFA[StoreCount] = Start;
    SFL[StoreCount] = Length;
-   strcpy(SFF[StoreCount],Filename);
-   if (df) fprintf(df,"Storing %4.4x - %4.4x <%s>\n",Start,Start+Length-1,Filename);
+   strcpy(SFF[StoreCount],FileName);
+   if (df) fprintf(df,"Storing %4.4x - %4.4x <%s>\n",Start,Start+Length-1,FileName);
    if (StoreCount < SFMAX) ++StoreCount;
    else
    {
